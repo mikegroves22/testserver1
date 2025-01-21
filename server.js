@@ -13,7 +13,7 @@ const db = new sqlite3.Database("./test.db",sqlite3.OPEN_READWRITE, (err) =>{
 });
 
 //sql = "CREATE TABLE users(id INTEGER PRIMARY KEY, username, password)";
-//db.run(sql);
+//db.run(sql);test
 
 
 //sql="INSERT INTO users(username,password) VALUES (?,?)";
