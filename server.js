@@ -224,6 +224,6 @@ app.post('/users/update', (req,res) => {
 
 
 app.listen (port, function(){
-    console.log( "server working on 3001");
+    console.log( "testserver working on 3001");
 })
 
