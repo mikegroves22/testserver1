@@ -58,14 +58,64 @@ app.post("/selectall",(req,res)=>{
   sql="SELECT * FROM " + tablename;
   db.all(sql,[],(err,rows) =>{
       if (err) return console.error(err.message);
+    
         if (rows.length>0){
             res.send(rows)
+        }
+        else if(rows.length ===0){
+            res.send([])
         }
         else{
             res.send({message:"cant find table name"})
         }
       })
   })
+
+    //--------------------------------------------------
+
+app.post("/headersandcolumns",(req,res)=>{
+
+  const tablename = req.body.tablename
+
+sql="SELECT * FROM headersandcolumns where tablename=?";
+db.all(sql,[tablename],(err,rows) =>{
+
+    if (err) return console.error(err.message);
+  
+      if (rows.length>0){
+          res.send(rows)
+      }
+      else if(rows.length ===0){
+          res.send([])
+      }
+      else{
+          res.send({message:"cant find tablename"})
+      }
+    })
+})
+
+  //--------------------------------------------------
+
+app.post("/tabs",(req,res)=>{
+
+  const moduleid = req.body.moduleid
+
+sql="SELECT * FROM modulesvstabs where moduleid=?";
+db.all(sql,[moduleid],(err,rows) =>{
+
+    if (err) return console.error(err.message);
+  
+      if (rows.length>0){
+          res.send(rows)
+      }
+      else if(rows.length ===0){
+          res.send([])
+      }
+      else{
+          res.send({message:"cant find moduleid"})
+      }
+    })
+})
 
   //--------------------------------------------------
 
@@ -83,6 +133,258 @@ app.post("/deleterow",(req,res)=>{
         }
         else{
             res.send({message:"problem with delete"})
+        }
+      })
+  })
+
+ //--------------------------------------------------
+
+ app.post("/headersandcolumns/add",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="INSERT INTO headersandcolumns(tablename,path,name,hidden) VALUES (?,?,?,?)";
+db.all(sql,values[1],values[2],values[3],values[4],(err,rows) =>{
+    
+  if (err) {
+  switch (err.errno) {
+    case 19:
+      res.send({message: "headersandcolumns already exists."})
+      break;
+  
+    default:
+      res.send({message: "Different Error"})
+      console.log(err.errno)
+      break;
+  }
+}else{
+
+  res.send({message: "headersandcolumns Added"})
+}
+    })
+})
+
+  //--------------------------------------------------
+
+app.post("/headersandcolumns/update",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="UPDATE headersandcolumns set tablename=?,path=?,name=?,hidden=?where headersandcolumnid=?";
+db.all(sql,[values[1],values[2],values[3],values[4],values[0]],(err,rows) =>{
+    if (err) return console.error(err.message);
+      if (rows.length>0){
+          res.send(rows)
+      }
+      else{
+          res.send({message:"need to check"})
+      }
+    })
+})
+
+  //--------------------------------------------------
+
+  app.post("/headersandcolumns/delete",(req,res)=>{
+
+    const values = req.body.values
+  
+    sql="DELETE FROM headersandcolumns WHERE headersandcolumnid = ?";
+  db.all(sql,[values[0]],(err,rows) =>{
+      if (err) return console.error(err.message);
+        if (rows.length>0){
+            res.send(rows)
+        }
+        else{
+            res.send({message:"need to check"})
+        }
+      })
+  })
+
+  //--------------------------------------------------
+
+app.post("/products/add",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="INSERT INTO products(productcode,productname,productgroup) VALUES (?,?,?)";
+db.all(sql,values,(err,rows) =>{
+    
+  if (err) {
+  switch (err.errno) {
+    case 19:
+      res.send({message: "Product already exists."})
+      break;
+  
+    default:
+      res.send({message: "Different Error"})
+      console.log(err.errno)
+      break;
+  }
+}else{
+
+  res.send({message: "Product Added"})
+}
+    })
+})
+
+  //--------------------------------------------------
+
+app.post("/products/update",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="UPDATE products set productcode=?,productname=?,productgroup=? where productid=?";
+db.all(sql,[values[1],values[2],values[3],values[0]],(err,rows) =>{
+    if (err) return console.error(err.message);
+      if (rows.length>0){
+          res.send(rows)
+      }
+      else{
+          res.send({message:"need to check"})
+      }
+    })
+})
+
+  //--------------------------------------------------
+
+  app.post("/products/delete",(req,res)=>{
+
+    const values = req.body.values
+  
+    sql="DELETE FROM products WHERE productid = ?";
+  db.all(sql,[values[0]],(err,rows) =>{
+      if (err) return console.error(err.message);
+        if (rows.length>0){
+            res.send(rows)
+        }
+        else{
+            res.send({message:"need to check"})
+        }
+      })
+  })
+
+   //--------------------------------------------------
+
+app.post("/productgroups/add",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="INSERT INTO productgroups(productgroupid,productgroupname) VALUES (?,?)";
+db.all(sql,values,(err,rows) =>{
+    
+  if (err) {
+  switch (err.errno) {
+    case 19:
+      res.send({message: "Product Group already exists."})
+      break;
+  
+    default:
+      res.send({message: "Different Error"})
+      console.log(err.errno)
+      break;
+  }
+}else{
+
+  res.send({message: "Product Group Added"})
+}
+    })
+})
+
+  //--------------------------------------------------
+
+app.post("/productgroups/update",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="UPDATE productgroups set productgroupname=? where productgroupid=?";
+db.all(sql,[values[1],values[0]],(err,rows) =>{
+    if (err) return console.error(err.message);
+      if (rows.length>0){
+          res.send(rows)
+      }
+      else{
+          res.send({message:"need to check"})
+      }
+    })
+})
+
+  //--------------------------------------------------
+
+  app.post("/productgroups/delete",(req,res)=>{
+
+    const values = req.body.values
+  
+    sql="DELETE FROM productgroups WHERE productgroupid = ?";
+  db.all(sql,[values[0]],(err,rows) =>{
+      if (err) return console.error(err.message);
+        if (rows.length>0){
+            res.send(rows)
+        }
+        else{
+            res.send({message:"need to check"})
+        }
+      })
+  })
+
+    //--------------------------------------------------
+
+app.post("/warehouses/add",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="INSERT INTO warehouses(warehousename) VALUES (?)";
+db.all(sql,values,(err,rows) =>{
+    
+  if (err) {
+  switch (err.errno) {
+    case 19:
+      res.send({message: "Warehouse already exists."})
+      break;
+  
+    default:
+      res.send({message: "Different Error"})
+      console.log(err.errno)
+      break;
+  }
+}else{
+
+  res.send({message: "Warehouse Added"})
+}
+    })
+})
+
+  //--------------------------------------------------
+
+app.post("/warehouses/update",(req,res)=>{
+
+  const values = req.body.values
+
+  sql="UPDATE warehouses set warehousename=? where warehouseid=?";
+db.all(sql,[values[1],values[0]],(err,rows) =>{
+    if (err) return console.error(err.message);
+      if (rows.length>0){
+          res.send(rows)
+      }
+      else{
+          res.send({message:"need to check"})
+      }
+    })
+})
+
+  //--------------------------------------------------
+
+  app.post("/warehouses/delete",(req,res)=>{
+
+    const values = req.body.values
+  
+    sql="DELETE FROM warehouses WHERE warehouseid = ?";
+  db.all(sql,[values[0]],(err,rows) =>{
+      if (err) return console.error(err.message);
+        if (rows.length>0){
+            res.send(rows)
+        }
+        else{
+            res.send({message:"need to check"})
         }
       })
   })
