@@ -1,55 +1,198 @@
 const express = require("express");
 const cors = require("cors");
 const sqlite3 = require("sqlite3");
+const bcrypt = require('bcryptjs')
+const session = require("express-session")
+const sqlite = require("better-sqlite3");
+const SqliteStore = require("better-sqlite3-session-store")(session)
+const sessiondb = new sqlite("sessions.db",
+  //  { verbose: console.log }
+  );
+
 let sql;
 
-const app = express();
+const isAuth = (req,res,next)=>{ //was async after =
+  if(req.session.isAuth){
+     console.log("is authorized")
+  next()
+  }else{
+    next()
+    console.log("not authorized. will redirect back to login")
+    // res.redirect('/') 
+  }
 
+}
+
+const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({credentials:true, origin: 'http://localhost:5173'}));
+
+const corsOptionsDev = {
+  origin: 'http://localhost:5173', // SPECIFIC origin!
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'], // Only allow Content-Type
+  credentials: true // Now it's allowed
+};
+
+app.use(
+  session({
+    store: new SqliteStore({
+      client: sessiondb, 
+      expired: {
+        clear: true,
+        intervalMs: 5000 * 2//ms   7 * 24 * 60 * 60 * 1000  // 7 days  or 900000ms = 15min
+      }
+    }),
+    secret: "keyboard cat",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      // sameSite: 'Lax', //was commented out
+      secure: false, // was false
+      maxAge: 604800000,
+      httpOnly: true, //was false
+      originalMaxAge: 604800000,
+      // path: '/'
+    }
+    
+  })
+)
 
 const db = new sqlite3.Database("./test.db",sqlite3.OPEN_READWRITE, (err) =>{
     if (err) return console.error(err.message);
 });
 
-//sql = "CREATE TABLE users(id INTEGER PRIMARY KEY, username, password)";
-//db.run(sql);test
+//-----------------------------------------RESISTER
 
+app.post("/register",async(req,res)=>{
 
-//sql="INSERT INTO users(username,password) VALUES (?,?)";
-//db.run(sql, [
-//"mike","1234"],
-//(err) =>{ 
-//if (err) return console.error(err.message)})
+  const emailSignup =req.body.emailSignup
+  const passwordSignup = req.body.passwordSignup
+  const companyName = req.body.companyName
 
+    sql='SELECT useremail,usercompanyid FROM users where useremail = ? OR usercompanyname = ?'
+    db.all(sql,[emailSignup,companyName],async (err,rows) =>{
 
+  if(rows.length > 0){
 
+    res.send({
+        desc:"Email and / or Company Name already Exists!",
+        status: 403
+    })
+  }else{
 
-app.get("/",function(req,res){
-res.send("Express")
+    const hashedPassword = await bcrypt.hash(passwordSignup, 12)
 
-})
-//-------------------------------------------------- 
-app.post("/auth",(req,res)=>{
+    // insert into companys and return company id
 
-    const username = req.body.username
-    const password = req.body.password
+  sql='INSERT INTO companies(companyname,companyexpiry,companysubscription) VALUES(?,?,?) RETURNING companyid'
+  db.all(sql,[companyName,"2025-01-01",'Admin'],async (err,rows) =>{
 
+     const companyId = rows[0].companyid
+    console.log("company added into companies")
 
-  sql="select * from users where username ='" + username + "' AND password ='" + password + "'";
-  console.log(sql)
-  db.all(sql,[],(err,rows) =>{
-      if (err) return console.error(err.message);
-        if (rows.length>0){
-            res.send(rows)
-        }
-        else{
-            res.send({message:"username and/or password incorrect"})
-        }
-      })
+      sql='INSERT INTO users(useremail,userpassword,usercompanyid, useraccess,usercreatedate,userexpiry,usercompanyname) VALUES(?,?,?,?,?,?,?)'
+        db.all(sql,[emailSignup, hashedPassword,companyId,2,"25-01-01","25-01-01", companyName],async(err,rows)=>{
+          console.log("company added into users")
+
+        })
   })
 
-//--------------------------------------------------
+    res.send({
+      desc: "Registration successfull!",
+      status: 200
+    })
+
+  }
+    })
+  })
+
+//-------------------------------------AUTH
+
+app.post('/auth',async(req,res)=>{
+
+  const useremail = req.body.emailLogin
+    const userpassword = req.body.passwordLogin 
+
+  //  console.log(req.session.id) 
+  
+      sql='SELECT userid,useremail,userpassword,usercompanyid,useraccess FROM users where useremail = ?'
+     db.all(sql,[useremail],async(err,rows)=>{
+ 
+      if(rows.length > 0){
+        const isMatch = await bcrypt.compare(userpassword,rows[0].userpassword) 
+    
+        if(isMatch){
+
+          // console.log(rows[0].userid)
+          // console.log(rows[0].usercompanyid)
+          // console.log(rows[0].useraccess)
+
+  
+       req.session.isAuth = true;
+       req.session.userid = rows[0].userid
+       req.session.usercompanyid = rows[0].usercompanyid
+       req.session.useraccess = rows[0].useraccess
+
+       console.log("here")
+      //  console.log(req)
+  
+        res.send({
+          desc:"success",
+          status: 200
+        })  
+      }
+      }else{  
+    
+        res.send({
+          desc:"email or password incorrect!",
+          status: 403
+        })
+      }
+     }) 
+    })
+
+//-----------------------------------------ERPNAV
+app.post("/erpnav",(req,res)=>{
+
+ console.log("useraccess = " + req.session.useraccess)
+// console.log(req.session)
+//modules
+sql=`SELECT DISTINCT modulename, m.moduleid FROM umsm
+        join modules m on umsm.moduleid = m.moduleid
+        where umsm.useraccessid = ?`;
+db.all(sql,[req.session.useraccess],(err,modules) =>{
+  if (err) return console.error(err.message);
+
+
+//good for submodules
+  sql=`SELECT * FROM umsm
+        join modules m on umsm.moduleid = m.moduleid
+        join submodules sm on umsm.submoduleid = sm.submoduleid
+        where umsm.useraccessid = ?`;
+  db.all(sql,[req.session.useraccess],(err,submodules) =>{
+      if (err) return console.error(err.message);
+    
+       if (submodules.length>0){
+           res.send(
+            {modules:modules,
+              submodules:submodules
+           })
+       }
+       else if(submodules.length ===0){
+           res.send([])
+       }
+       else{
+          res.send({
+            desc:"Nav Links Sent",
+            status: 403
+          })
+       }
+     })
+    })
+})
+
+//----------------------------------------SELECTALL
 
 app.post("/selectall",(req,res)=>{
 
@@ -519,6 +662,18 @@ app.post('/users/update', (req,res) => {
         })
   
   });
+
+   // If registration is successful:
+  //  res.cookie('yourCookieName', 'yourCookieValue', {
+  //    Domain: 'localhost', // Optional in development, omit if possible
+  //   Path: '/', // Usually /
+  //   Secure: false, // false in development, true in production
+  //   HttpOnly: true, // Always true for security
+  //   SameSite: 'Lax', // Or Strict, depending on your needs
+  //   MaxAge: 3600000 // 1 hour in milliseconds
+  // });
+
+  // // res.set('Set-Cookie', 'test=testttt; sameSite=None ;secure=true')
 
 //-------------------------------------------------  
 
